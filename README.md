@@ -2,6 +2,10 @@
 
 This is a proof-of-concept demonstrating **native vector search** using MongoDB Community Edition 8.2 with `mongot` (MongoDB's full-text search engine) and a Next.js frontend.
 
+- Youtube short - https://youtube.com/shorts/s7BdWBz_VWs?si=8Px_ADmEXwVgdfF9
+- [plan-mongodbVectorSearchPoc.prompt.md](.github/prompts/plan-mongodbVectorSearchPoc.prompt.md)
+- [DRAMA.md](DRAMA.md)
+
 ## ✨ Features
 
 - **MongoDB Community 8.2** with vector search capabilities
