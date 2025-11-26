@@ -1,0 +1,73 @@
+services:
+  mongodb:
+    image: mongodb/mongodb-community-server:8.2.2-ubuntu2204
+    container_name: mongodb_vector_search
+    environment:
+      - MONGODB_INITDB_ROOT_USERNAME=admin
+      - MONGODB_INITDB_ROOT_PASSWORD=password123
+    command:
+      - mongod
+      - --bind_ip_all
+      - --replSet
+      - rs0
+      - --keyFile
+      - /etc/mongodb-keyfile
+      - --setParameter
+      - searchIndexManagementHostAndPort=mongot:27027
+      - --setParameter
+      - mongotHost=mongot:27027
+      - --setParameter
+      - skipAuthenticationToSearchIndexManagementServer=false
+      - --setParameter
+      - useGrpcForSearch=true
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./mongodb-keyfile:/etc/mongodb-keyfile:ro
+    networks:
+      - mongodb_network
+    healthcheck:
+      test: ["CMD", "mongosh", "-u", "admin", "-p", "password123", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongot:
+    image: ubuntu:22.04
+    container_name: mongot_vector_search
+    working_dir: /opt/mongot
+    volumes:
+      - /Users/avagu/Downloads/mongot-community:/tmp/mongot-source:ro
+      - ./mongot-config.yml:/tmp/mongot-config.yml:ro
+      - ./mongot-password.txt:/tmp/mongot-password.txt:ro
+      - mongot_data:/var/lib/mongot
+    command: >
+      bash -c "
+      cp -r /tmp/mongot-source/* /opt/mongot/ &&
+      cp /tmp/mongot-config.yml /opt/mongot/config.yml &&
+      cp /tmp/mongot-password.txt /opt/mongot/password.txt &&
+      chmod 400 /opt/mongot/password.txt &&
+      chmod +x /opt/mongot/mongot &&
+      /opt/mongot/mongot --config=/opt/mongot/config.yml
+      "
+    ports:
+      - "27027:27027"
+      - "8080:8080"
+      - "9946:9946"
+    networks:
+      - mongodb_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+  mongodb_config:
+  mongot_data:
+
+networks:
+  mongodb_network:
+    driver: bridge
