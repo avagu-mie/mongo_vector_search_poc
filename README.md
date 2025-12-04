@@ -5,6 +5,7 @@ This is a proof-of-concept demonstrating **native vector search** using MongoDB 
 - Youtube short - https://youtube.com/shorts/s7BdWBz_VWs?si=8Px_ADmEXwVgdfF9
 - [plan-mongodbVectorSearchPoc.prompt.md](.github/prompts/plan-mongodbVectorSearchPoc.prompt.md)
 - [DRAMA.md](DRAMA.md)
+- Try this out at: https://mongo-vector-search.opensource.mieweb.org/
 
 ## ✨ Features
 
@@ -40,6 +41,7 @@ This is a proof-of-concept demonstrating **native vector search** using MongoDB 
 - Docker Desktop
 - Node.js 25+ (for development)
 - OpenAI API key
+- **MongoDB Search (mongot)**: The `mongot-community` folder is required but excluded from the repository. Download the MongoDB Search Community Edition tarball, extract it, and rename the folder to `mongot-community` in the project root.
 
 ### Setup
 
@@ -101,6 +103,13 @@ npm run dev
 Visit http://localhost:3000 and click **"Seed Database"**.
 
 Then create the vector search index:
+
+You can run the provided script:
+```bash
+./create-vector-index.sh
+```
+
+Or run the command manually:
 
 ```bash
 docker exec mongodb_vector_search mongosh -u admin -p password123 --authenticationDatabase admin --eval "
@@ -200,6 +209,7 @@ See `mongot-config.yml` for the complete configuration. Key points:
 1. **SCRAM-SHA-256 Required:** MongoDB 8.0+ removed SCRAM-SHA-1. The `mongotUser` must be created with `mechanisms: ['SCRAM-SHA-256']`.
 
 2. **Replica Set Required:** mongot requires MongoDB to run as a replica set, even with a single node.
+   > **Why?** `mongot` stays in sync by watching the MongoDB **Oplog** (Operations Log). Standalone MongoDB instances do not have an Oplog; only Replica Sets do. Therefore, we must run a "Replica Set of 1" so that `mongot` has a stream of data changes to index.
 
 3. **Keyfile Authentication:** The replica set uses keyfile auth for internal communication (`mongodb-keyfile` with 600 permissions).
 
@@ -233,3 +243,57 @@ See `mongot-config.yml` for the complete configuration. Key points:
 ## 📄 License
 
 This is a proof-of-concept for educational purposes.
+
+## 🔐 Configuration Files
+
+### 1. mongot-password.txt
+This file contains the plain text password used by the `mongot` process to authenticate with the MongoDB database.
+"password123" is the default password set for mongodb in this POC.
+- **How to create:**
+  ```bash
+  echo "password123" > mongot-password.txt
+  chmod 400 mongot-password.txt
+  ```
+- **Content:** `password123` (must match the `mongotUser` password created in the database).
+
+### 2. mongodb-keyfile
+This file is used for internal authentication between MongoDB replica set members.
+- **How to create:**
+  ```bash
+  openssl rand -base64 756 > mongodb-keyfile
+  chmod 400 mongodb-keyfile
+  ```
+
+## 🐧 Debian Container Setup (PM2)
+
+This project has been configured to run in a Debian-based container environment using **PM2** for process management. This setup replaces the manual `nohup` or Docker Compose method for this specific environment.
+
+### Key Changes & Components
+
+1.  **Process Management (PM2):**
+    - We use `pm2` to manage `mongodb`, `mongot`, and `nextjs` processes.
+    - Configuration is defined in `ecosystem.config.js`.
+    - **Mongot Specifics:** The `mongot` process is a bash script wrapper, so it is configured with `interpreter: "/bin/bash"` in PM2 to avoid syntax errors.
+
+2.  **Startup Script (`start-all.sh`):**
+    - A comprehensive bootstrap script that:
+        - Installs MongoDB 8.2 and Node.js if missing.
+        - Sets up data directories and keyfiles.
+        - Installs and configures PM2.
+        - Cleans up old processes (`pkill`, `pm2 delete`).
+        - Starts all services via PM2.
+        - Initializes the MongoDB Replica Set (`rs0`) and creates required users (`admin`, `mongotUser`).
+
+3.  **Usage:**
+    To start the entire stack in this environment:
+    ```bash
+    sudo ./start-all.sh
+    ```
+
+    To manage processes:
+    ```bash
+    sudo pm2 status
+    sudo pm2 logs
+    sudo pm2 stop all
+    sudo pm2 restart all
+    ```

@@ -1,8 +1,8 @@
 syncSource:
   replicaSet:
-    hostAndPort: "mongodb:27017"
+    hostAndPort: "localhost:27017"
     username: "mongotUser"
-    passwordFile: "/opt/mongot/password.txt"
+    passwordFile: "/opt/mongo_vector_search_poc/mongot-password.txt"
     authSource: "admin"
 storage:
   dataPath: "/var/lib/mongot"
